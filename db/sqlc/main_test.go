@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"os"
+
+	// "simplebank/api"
 	"simplebank/util"
 	"testing"
 
@@ -13,6 +15,18 @@ import (
 var testQueries *Queries
 
 var dbConn *sql.DB
+
+// func newTestServer(t *testing.T, store Store) *api.Server {
+// 	config := util.Config{
+// 		TokenSymmetricKey: util.RandomString(32),
+// 		AccessTokenDuration: time.Minute,
+// 	}
+// 	server, err := api.NewServer(config, store )
+// 	require.NoError(t, err)
+
+// 	return server
+// 	// server, err :=
+// }
 
 func TestMain(m *testing.M) {
 	var err error

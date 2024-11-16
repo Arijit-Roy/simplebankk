@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	db "simplebank/db/sqlc"
+	"simplebank/token"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,32 +34,41 @@ func (s *Server) TransferAmount(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
-	if !s.validAccount(ctx, req.FromAccountID, req.Currency) {
+	fromAcc, valid := s.validAccount(ctx, req.FromAccountID, req.Currency)
+	if !valid {
 		return
 	}
 
-	if !s.validAccount(ctx, req.ToAccountID, req.Currency) {
+	if fromAcc.Owner != authPayload.UserName {
+		err := errors.New("from account does not belong to the authenticated user")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
+	_, valid = s.validAccount(ctx, req.ToAccountID, req.Currency)
+	if !valid {
 		return
 	}
 
 	ctx.JSON(http.StatusOK, result)
 }
 
-func (server *Server) validAccount(ctx *gin.Context, accountID int64, currency string) bool {
+func (server *Server) validAccount(ctx *gin.Context, accountID int64, currency string) (db.Account, bool) {
 	account, err := server.store.GetAccount(ctx, accountID)
 
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, errorResponse(err))
-		return false
+		return account, false
 	}
 
 	if account.Currency != currency {
 		err := fmt.Errorf("account [%d] currency mismatch: %s vs %s", accountID, account.Currency, currency)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return false
+		return account, false
 	}
-	return true
+	return account, true
 }
 
 // func (server *Server) checkCurrency(ctx *gin.Context, accountID int64, currency string) bool {
